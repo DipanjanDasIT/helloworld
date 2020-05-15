@@ -1,8 +1,9 @@
 import pytest
 import random
+from unittest.mock import patch
 
-def rand_choice(max=10, min=0):
-    return random.choice(range(min, max))
+def rand_choice(max=10, min=0, pres = 1):
+    return random.choice(range(min, max))/pres
 def test_cube_vertices():
     from main import cube_vertices
     x, y, z, n = rand_choice(), rand_choice(), rand_choice(), rand_choice()
@@ -22,14 +23,26 @@ def test_tex_coord():
     res =  tex_coord(x, y)
     assert type(res) == tuple and len(res) == 8 and all()
 
-def test_tex_coords():
-    pass
+@patch('main.tex_coord')
+def test_tex_coords(mock_tex_coord):
+    mock_tex_coord.return_value = (0, 0.1, 0.2, 0.1, 0.2, 0.3, 0, 0.3)
+    from main import tex_coords
+    res = tex_coords((), (), ())
+    assert type(res) == list and len(res) == 48
 
 def test_normalize():
-    pass
+    position = (rand_choice(pres=0.1), rand_choice(pres=0.4), rand_choice(pres=0.11))
+    from main import normalize
+    res = normalize(position)
+    assert type(res) == tuple and len(res) == 3 and all([type(i)==int for i in res])
 
-def test_sectorize():
-    pass
+@patch('main.normalize')
+def test_sectorize(mock_normalize):
+    mock_normalize.return_value = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
+    position = (rand_choice(pres=0.1), rand_choice(pres=0.4), rand_choice(pres=0.11))
+    from main import sectorize
+    res = sectorize(position)
+    assert type(res) == tuple and len(res) == 3
 
 def test_Model_initialize():
     pass
