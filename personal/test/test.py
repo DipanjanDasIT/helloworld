@@ -1,6 +1,6 @@
 import pytest
 import random
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 def rand_choice(max=10, min=0, pres = 1):
     return random.choice(range(min, max))/pres
@@ -47,8 +47,16 @@ def test_sectorize(mock_normalize):
 def test_Model_initialize():
     pass
 
-def test_Model_hit_test():
-    pass
+@patch('main.normalize')
+def test_Model_hit_test(mock_normalize):
+    existing_block_position_in_world = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
+    dummy_vector = (rand_choice(max=2, pres=56),rand_choice(max=2, pres=1), rand_choice(max=2, pres=5))
+    mock_normalize.side_effect = [existing_block_position_in_world, (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))]
+    from main import Model
+    model_mock = Model()
+    model_mock.world = Mock({existing_block_position_in_world: ()})
+    res = model_mock.hit_test((), dummy_vector)
+    assert type(res) == tuple and len(res) == 2
 
 def test_Model_exposed():
     pass
