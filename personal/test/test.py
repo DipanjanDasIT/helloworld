@@ -2,9 +2,12 @@ import pytest
 import random
 from unittest.mock import patch, Mock
 import os
-import traceback
 import pyglet
 
+@pytest.fixture
+def gl_config():
+    from main import setup
+    setup()
 def rand_choice(max=10, min=0, pres = 1):
     return random.choice(range(min, max))/pres
 
@@ -49,19 +52,23 @@ def test_sectorize(mock_normalize):
     assert type(res) == tuple and len(res) == 3
 
 def test_Model_initialize():
-    pass
+    from main import Model
+    mock_model = Model()
+    model_attrib_list = ['batch', 'group', 'world', 'shown', '_shown', 'sectors', 'queue']
+    assert all([hasattr(mock_model, i) for i in model_attrib_list])
+    assert len(mock_model.world) > 0 and len(mock_model.sectors) > 0
+    assert len(mock_model.shown) == 0 and len(mock_model._shown) == 0
+    assert len(mock_model.queue) == 0
 
 @patch('main.normalize')
-@patch('pyglet.image')
-def test_Model_hit_test(mock_image_load, mock_normalize):
+def test_Model_hit_test(mock_normalize):
     existing_block_position_in_world = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
     non_existing_block_in_world = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
     dummy_vector = (rand_choice(max=2, pres=56),rand_choice(max=2, pres=1), rand_choice(max=2, pres=5))
-    mock_normalize.return_value = existing_block_position_in_world
     from main import Model
-    mock_image_load.load.return_value.get_texture.return_value = None
     Model._initialize = Mock(return_value=None)
     model_mock = Model()
+    mock_normalize.return_value = existing_block_position_in_world
     model_mock.world = {existing_block_position_in_world: ()}
     res = model_mock.hit_test(existing_block_position_in_world, dummy_vector)
     assert type(res) == tuple and len(res) == 2 and res[0] == existing_block_position_in_world 
@@ -69,11 +76,9 @@ def test_Model_hit_test(mock_image_load, mock_normalize):
     res = model_mock.hit_test(non_existing_block_in_world, dummy_vector, max_distance=2)
     assert type(res) == tuple and len(res) == 2 and res == (None, None)
 
-@patch('pyglet.image')
-def test_Model_exposed(mock_image_load):
+def test_Model_exposed():
     position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
     from main import Model, FACES
-    mock_image_load.load.return_value.get_texture.return_value = None
     Model._initialize = Mock(return_value=None)
     model_mock = Model()
     model_mock.world = {FACES[0]:()}
@@ -84,11 +89,9 @@ def test_Model_exposed(mock_image_load):
     assert res == False
 
 @patch('main.sectorize')
-@patch('pyglet.image')
-def test_Model_add_block(mock_image_load, mock_sectorize):
+def test_Model_add_block(mock_sectorize):
     position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
     from main import Model, FACES
-    mock_image_load.load.return_value.get_texture.return_value = None
     Model._initialize = Mock(return_value=None)
     model_mock = Model()
     model_mock.world = {}
@@ -110,11 +113,9 @@ def test_Model_add_block(mock_image_load, mock_sectorize):
     assert model_mock.shown[position] == dummy_texture
 
 @patch('main.sectorize')
-@patch('pyglet.image')
-def test_Model_remove_block(mock_image_load, mock_sectorize):
+def test_Model_remove_block(mock_sectorize):
     position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
     from main import Model, FACES
-    mock_image_load.load.return_value.get_texture.return_value = None
     Model._initialize = Mock(return_value=None)
     model_mock = Model()
     model_mock.world[position] = "Texture"
@@ -132,11 +133,9 @@ def test_Model_remove_block(mock_image_load, mock_sectorize):
             assert position not in model_mock.world and position not in model_mock.sectors[()]
             assert position not in model_mock.shown
 
-@patch('pyglet.image')
-def test_Model_check_neighbors(mock_image_load):
+def test_Model_check_neighbors():
     position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
     from main import Model, FACES
-    mock_image_load.load.return_value.get_texture.return_value = None
     Model._initialize = Mock(return_value=None)
     model_mock = Model()
     model_mock.world[FACES[0]] = None
@@ -154,11 +153,9 @@ def test_Model_check_neighbors(mock_image_load):
     model_mock.check_neighbors(position)
     assert dummy_key not in model_mock.shown
 
-@patch('pyglet.image')
-def test_Model_show_block(mock_image_load):
+def test_Model_show_block():
     position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
     from main import Model
-    mock_image_load.load.return_value.get_texture.return_value = None
     Model._initialize = Mock(return_value=None)
     model_mock = Model()
     model_mock.world = {position: "Texture"}
@@ -170,23 +167,18 @@ def test_Model_show_block(mock_image_load):
     assert position in model_mock.shown and position in model_mock._shown
     
 @patch('main.cube_vertices')
-@patch('pyglet.image')
-def test_Model__show_block(mock_image_load, mock_cube_vertices):
+def test_Model__show_block(mock_cube_vertices):
     position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
     mock_cube_vertices.return_value = [i for i in range(4*3*6)]
     from main import Model, GRASS
-    mock_image_load.load.return_value.get_texture.return_value = Mock()
-    mock_image_load.load.return_value.get_texture.return_value.target = None
     Model._initialize = Mock(return_value=None)
     model_mock = Model()
     model_mock._show_block(position, GRASS)
     assert position in model_mock._shown and type(model_mock._shown[position]) == pyglet.graphics.vertexdomain.VertexList
 
-@patch('pyglet.image')
-def test_Model_hide_block(mock_image_load):
+def test_Model_hide_block():
     position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
     from main import Model
-    mock_image_load.load.return_value.get_texture.return_value = None
     Model._initialize = Mock(return_value=None)
     model_mock = Model()
     model_mock.shown = {position: None}
@@ -201,11 +193,9 @@ def test_Model_hide_block(mock_image_load):
     model_mock.hide_block(position)
     assert position not in model_mock.shown and position not in model_mock._shown
 
-@patch('pyglet.image')
-def test_Model__hide_block(mock_image_load):
+def test_Model__hide_block():
     position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
     from main import Model
-    mock_image_load.load.return_value.get_texture.return_value = None
     Model._initialize = Mock(return_value=None)
     model_mock = Model()
     dummy_mock = Mock()
@@ -214,11 +204,9 @@ def test_Model__hide_block(mock_image_load):
     model_mock._hide_block(position)
     assert position not in model_mock._shown
 
-@patch('pyglet.image')
-def test_Model_show_sector(mock_image_load):
+def test_Model_show_sector():
     position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
     from main import Model
-    mock_image_load.load.return_value.get_texture.return_value = None
     Model._initialize = Mock(return_value=None)
     model_mock = Model()
     model_mock.sectors = {(1, 1, 1): [position]}
@@ -228,65 +216,104 @@ def test_Model_show_sector(mock_image_load):
     assert position == model_mock.queue[0][1]
 
 
+
 def test_Model_hide_sector():
-    pass
+    position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
+    from main import Model
+    Model._initialize = Mock(return_value=None)
+    model_mock = Model()
+    model_mock.sectors = {(1, 1, 1): [position]}
+    model_mock.shown = {position, None}
+    model_mock.hide_block = lambda x, y: model_mock.queue.append((model_mock._hide_block, x))
+    model_mock.hide_sector((1, 1, 1))
+    assert position == model_mock.queue[0][1]
 
 def test_Model_change_sectors():
-    pass
+    raise Exception()
 
 def test_Model__enqueue():
-    pass
+    position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
+    from main import Model
+    Model._initialize.return_value = None
+    model_mock = Model()
+    model_mock._enqueue(model_mock._show_block, position)
+    assert len(model_mock.queue) > 0
 
 def test_Model__dequeue():
-    pass
+    position = (rand_choice(min=16, max=25), rand_choice(), rand_choice(min=55, max=500))
+    from main import Model
+    Model._initialize.return_value = None
+    model_mock = Model()
+    dummy_mock = Mock()
+    dummy_mock.return_value.delete.return_value = None
+    model_mock._shown = {position: dummy_mock}
+    model_mock._hide_block = lambda x, y, z: model_mock._shown.pop((x, y, z)).delete()
+    model_mock.queue.append((model_mock._hide_block, position))
+    queue_len = len(model_mock.queue)
+    model_mock._dequeue()
+    assert len(model_mock.queue) == queue_len - 1 and len(model_mock._shown) == 0
+
 
 def test_Model_process_queue():
-    pass
+    raise Exception()
 
 def test_Model_process_entire_queue():
-    pass
+    raise Exception()
 
 def test_Window_set_exclusive_mouse():
-    pass
+    raise Exception()
 
 def test_Window_get_sight_vector():
-    pass
+    raise Exception()
 
 def test_Window_get_motion_vector():
-    pass
+    raise Exception()
 
 def test_Window_update():
-    pass
+    raise Exception()
 
 def test_Window__update():
-    pass
+    raise Exception()
 
 def test_Window_collide():
-    pass
+    raise Exception()
 
 def test_Window_on_mouse_press():
-    pass
+    raise Exception()
 
 def test_Window_on_mouse_motion():
-    pass
+    raise Exception()
 
 def test_Window_on_key_press():
-    pass
+    raise Exception()
 
 def test_Window_on_key_release():
-    pass
+    raise Exception()
 
 def test_Window_on_resize():
-    pass
+    raise Exception()
 
 def test_Window_set_2d():
-    pass
+    raise Exception()
 
 def test_Window_set_3d():
-    pass
+    raise Exception()
 
 def test_Window_on_draw():
-    pass
+    raise Exception()
 
 def test_Window_draw_focused_block():
-    pass
+    raise Exception()
+
+def test_Window_draw_label():
+    raise Exception()
+
+@patch('pyglet.image')
+def test_Window_draw_reticle(mock_image):
+    from main import Window, Model
+    mock_image.load.return_value.get_texture.return_value = None
+    Model._initialize.return_value = None
+    win_mock = Window()
+    win_mock.draw_reticle()
+    assert 3==3
+
